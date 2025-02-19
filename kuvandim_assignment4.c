@@ -20,6 +20,7 @@ struct command_line {
 };
 
 // prototypes
+struct command_line *parse_input(void);
 
 // main
 int main()
