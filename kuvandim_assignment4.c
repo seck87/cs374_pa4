@@ -3,6 +3,9 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h> 
+#include <unistd.h>
+#include <sys/wait.h>
 
 // define directives
 #define INPUT_LENGTH 2048
@@ -26,6 +29,7 @@ struct command_line *parse_input(void);
 int main()
 {
         struct command_line *curr_command;
+
         while (true) {
                 curr_command = parse_input();
         }
