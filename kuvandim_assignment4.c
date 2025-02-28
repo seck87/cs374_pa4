@@ -6,6 +6,7 @@
 #include <sys/types.h> 
 #include <unistd.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 // define directives
 #define INPUT_LENGTH 2048
@@ -83,6 +84,11 @@ struct command_line *parse_input(void)
         return curr_command;
 }
 
+/*
+ * The following function is adapted from coursework provided in:
+ * Operating Systems I (CS 374, Winter 2025), Oregon State University.
+ * Course Instructors: Chaudhry, N., Tonsmann, G.
+ */
 void execute_input(struct command_line *command)
 {
         if (command->argc == 0) {
@@ -139,6 +145,36 @@ void execute_input(struct command_line *command)
                 exit(EXIT_FAILURE);
                 
         } else if (spawnpid == 0) {
+
+                if (command->input_file != NULL) {
+
+                        int fd_in = open(command->input_file, O_RDONLY);
+
+                        if (fd_in == -1) {
+                                exit(EXIT_FAILURE);
+                        }
+
+                        if (dup2(fd_in, 0) == -1) {
+                                exit(EXIT_FAILURE);
+                        }
+
+                        close(fd_in);
+                }
+            
+                if (command->output_file != NULL) {
+
+                        int fd_out = open(command->output_file, O_WRONLY | O_CREAT | O_TRUNC, 0640);
+
+                        if (fd_out == -1) {
+                                exit(EXIT_FAILURE);
+                        }
+
+                        if (dup2(fd_out, 1) == -1) {
+                                exit(EXIT_FAILURE);
+                        }
+
+                        close(fd_out);
+                }
 
                 if (execvp(command->argv[0], command->argv) == -1) {
                         exit(EXIT_FAILURE);
