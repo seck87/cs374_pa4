@@ -130,5 +130,37 @@ void execute_input(struct command_line *command)
         }
 
         // Non built-in commands go here!
+        pid_t spawnpid = fork();
+        int child_status;
+
+        if (spawnpid == -1) {
+                
+                free(command);
+                exit(EXIT_FAILURE);
+                
+        } else if (spawnpid == 0) {
+
+                if (execvp(command->argv[0], command->argv) == -1) {
+                        exit(EXIT_FAILURE);
+                }
+
+        } else {
+
+                waitpid(spawnpid, &child_status, 0);
+
+                if (WIFEXITED(child_status)) {
+
+                        last_fg_status = WEXITSTATUS(child_status);
+                        last_fg_terminated_by_signal = false;
+
+                } else if (WIFSIGNALED(child_status)) {
+
+                        last_fg_signal = WTERMSIG(child_status);
+                        last_fg_terminated_by_signal = true;
+                        printf("terminated by signal %d\n", last_fg_signal);
+                        fflush(stdout);
+                }
+        }
+
         free(command);
 }
