@@ -151,6 +151,7 @@ void execute_input(struct command_line *command)
                         int fd_in = open(command->input_file, O_RDONLY);
 
                         if (fd_in == -1) {
+                                fprintf(stderr, "cannot open %s for input\n", command->input_file);
                                 exit(EXIT_FAILURE);
                         }
 
@@ -166,6 +167,7 @@ void execute_input(struct command_line *command)
                         int fd_out = open(command->output_file, O_WRONLY | O_CREAT | O_TRUNC, 0640);
 
                         if (fd_out == -1) {
+                                fprintf(stderr, "cannot open %s for output\n", command->output_file);
                                 exit(EXIT_FAILURE);
                         }
 
@@ -177,6 +179,7 @@ void execute_input(struct command_line *command)
                 }
 
                 if (execvp(command->argv[0], command->argv) == -1) {
+                        fprintf(stderr, "%s: no such file or directory\n", command->argv[0]);
                         exit(EXIT_FAILURE);
                 }
 
