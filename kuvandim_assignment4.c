@@ -12,6 +12,7 @@
 // define directives
 #define INPUT_LENGTH 2048
 #define MAX_ARGS 512
+#define MAX_BG_PROCESSES 10
 
 // type definitions
 
@@ -19,6 +20,8 @@
 int last_fg_status = 0;
 int last_fg_signal = 0;
 bool last_fg_terminated_by_signal = false;
+pid_t bg_processes[MAX_BG_PROCESSES];
+int bg_count = 0;
 
 /*
  * The following struct is taken from the file "sample_parser.c" provided in:
@@ -36,6 +39,7 @@ struct command_line {
 // prototypes
 struct command_line *parse_input(void);
 void execute_input(struct command_line *command);
+void check_bg_processes(void);
 
 // main
 int main()
@@ -43,6 +47,7 @@ int main()
         struct command_line *curr_command;
 
         while (true) {
+                check_bg_processes();
                 curr_command = parse_input();
                 execute_input(curr_command);
         }
@@ -197,6 +202,10 @@ void execute_input(struct command_line *command)
                         printf("background pid is %d\n", spawnpid);
                         fflush(stdout);
 
+                        if (bg_count < MAX_BG_PROCESSES) {
+                                bg_processes[bg_count++] = spawnpid;
+                        }
+
                 } else {
 
                         waitpid(spawnpid, &child_status, 0);
@@ -217,4 +226,41 @@ void execute_input(struct command_line *command)
         }
 
         free(command);
+}
+
+/*
+ * The following function is adapted from coursework provided in:
+ * Operating Systems I (CS 374, Winter 2025), Oregon State University.
+ * Course Instructors: Chaudhry, N., Tonsmann, G.
+ */
+void check_bg_processes(void)
+{
+        int status;
+
+        for (int i = 0; i < bg_count; ) {
+
+                pid_t result = waitpid(bg_processes[i], &status, WNOHANG);
+
+                if (result > 0) {
+
+                        if (WIFEXITED(status)) {
+                                printf("background pid %d is done: exit value %d\n", bg_processes[i], WEXITSTATUS(status));
+                        } else if (WIFSIGNALED(status)) {
+                                printf("background pid %d is done: terminated by signal %d\n", bg_processes[i], WTERMSIG(status));
+                        }
+
+                        fflush(stdout);
+
+                        for (int j = i; j < bg_count - 1; j++) {
+                                bg_processes[j] = bg_processes[j+1];
+                        }
+                        
+                        bg_count--;
+
+                } else {
+
+                        i++;
+                }
+
+        }
 }
