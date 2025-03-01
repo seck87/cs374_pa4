@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <signal.h>
 
 // define directives
 #define INPUT_LENGTH 2048
@@ -146,6 +147,12 @@ void execute_input(struct command_line *command)
                 
         } else if (spawnpid == 0) {
 
+                if (command->is_bg) {
+                        signal(SIGINT, SIG_IGN);
+                } else {
+                        signal(SIGINT, SIG_DFL);
+                }
+
                 if (command->input_file != NULL) {
 
                         int fd_in = open(command->input_file, O_RDONLY);
@@ -185,19 +192,27 @@ void execute_input(struct command_line *command)
 
         } else {
 
-                waitpid(spawnpid, &child_status, 0);
+                if (command->is_bg) {
 
-                if (WIFEXITED(child_status)) {
-
-                        last_fg_status = WEXITSTATUS(child_status);
-                        last_fg_terminated_by_signal = false;
-
-                } else if (WIFSIGNALED(child_status)) {
-
-                        last_fg_signal = WTERMSIG(child_status);
-                        last_fg_terminated_by_signal = true;
-                        printf("terminated by signal %d\n", last_fg_signal);
+                        printf("background pid is %d\n", spawnpid);
                         fflush(stdout);
+
+                } else {
+
+                        waitpid(spawnpid, &child_status, 0);
+
+                        if (WIFEXITED(child_status)) {
+
+                                last_fg_status = WEXITSTATUS(child_status);
+                                last_fg_terminated_by_signal = false;
+
+                        } else if (WIFSIGNALED(child_status)) {
+
+                                last_fg_signal = WTERMSIG(child_status);
+                                last_fg_terminated_by_signal = true;
+                                printf("terminated by signal %d\n", last_fg_signal);
+                                fflush(stdout);
+                        }
                 }
         }
 
