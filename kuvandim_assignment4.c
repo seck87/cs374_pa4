@@ -31,6 +31,7 @@ int last_fg_signal = 0;
 bool last_fg_terminated_by_signal = false;
 pid_t bg_processes[MAX_BG_PROCESSES];
 int bg_count = 0;
+int fg_only_mode = 0;
 
 /*
  * The following struct is taken from the file "sample_parser.c" provided in:
@@ -49,6 +50,7 @@ struct command_line {
 struct command_line *parse_input(void);
 void execute_input(struct command_line *command);
 void check_bg_processes(void);
+void handle_SIGTSTP(int signal_number);
 
 // main
 int main()
@@ -58,6 +60,12 @@ int main()
         sigfillset(&SIGINT_action.sa_mask);
         SIGINT_action.sa_flags = SA_RESTART;
         sigaction(SIGINT, &SIGINT_action, NULL);
+
+        struct sigaction SIGTSTP_action = {0};
+        SIGTSTP_action.sa_handler = handle_SIGTSTP;
+        sigfillset(&SIGTSTP_action.sa_mask);
+        SIGTSTP_action.sa_flags = SA_RESTART;
+        sigaction(SIGTSTP, &SIGTSTP_action, NULL);
 
         struct command_line *curr_command;
 
@@ -277,5 +285,28 @@ void check_bg_processes(void)
                         i++;
                 }
 
+        }
+}
+
+/*
+ * The following function is adapted from coursework provided in:
+ * Operating Systems I (CS 374, Winter 2025), Oregon State University.
+ * Course Instructors: Chaudhry, N., Tonsmann, G.
+ */
+void handle_SIGTSTP(int signal_number) {
+
+        if (fg_only_mode == 0) {
+
+                fg_only_mode = 1;
+
+                char *msg = "\nEntering foreground-only mode (& is now ignored)\n"; // 50 bytes
+                write(STDOUT_FILENO, msg, 50);
+
+        } else {
+
+                fg_only_mode = 0;
+
+                char *msg = "\nExiting foreground-only mode\n"; // 30 bytes
+                write(STDOUT_FILENO, msg, 30);
         }
 }
