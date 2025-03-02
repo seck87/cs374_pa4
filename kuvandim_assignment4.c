@@ -256,6 +256,8 @@ void execute_input(struct command_line *command)
 
                         waitpid(spawnpid, &child_status, 0);
 
+                        child_running = 0;
+
                         if (WIFEXITED(child_status)) {
 
                                 last_fg_status = WEXITSTATUS(child_status);
@@ -275,7 +277,7 @@ void execute_input(struct command_line *command)
 
                                         char *msg = "\nEntering foreground-only mode (& is now ignored)\n"; // 50 bytes
                                         write(STDOUT_FILENO, msg, 50);
-                                        
+
                                 } else {
 
                                         char *msg = "\nExiting foreground-only mode\n"; // 30 bytes
