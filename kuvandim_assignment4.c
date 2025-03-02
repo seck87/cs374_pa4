@@ -1,3 +1,12 @@
+/*
+ * The following macro definition provided on:
+ * https://stackoverflow.com/questions/6491019/struct-sigaction-incomplete-error
+ * Solves the following error messages, on Ubuntu 22.04.5 LTS Release 22.04 and Visual Studio Code:
+ * "incomplete type "struct sigaction" is not allowed"
+ * "identifier "SA_RESTART" is undefined"
+ */
+#define _XOPEN_SOURCE 700
+
 // include directives
 #include <stdio.h>
 #include <stdbool.h>
@@ -44,6 +53,12 @@ void check_bg_processes(void);
 // main
 int main()
 {
+        struct sigaction SIGINT_action = {0};
+        SIGINT_action.sa_handler = SIG_IGN;
+        sigfillset(&SIGINT_action.sa_mask);
+        SIGINT_action.sa_flags = SA_RESTART;
+        sigaction(SIGINT, &SIGINT_action, NULL);
+
         struct command_line *curr_command;
 
         while (true) {
