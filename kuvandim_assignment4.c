@@ -32,6 +32,8 @@ bool last_fg_terminated_by_signal = false;
 pid_t bg_processes[MAX_BG_PROCESSES];
 int bg_count = 0;
 int fg_only_mode = 0;
+int child_running = 0;
+int tstp_pending = 0; 
 
 /*
  * The following struct is taken from the file "sample_parser.c" provided in:
@@ -164,6 +166,10 @@ void execute_input(struct command_line *command)
                 return;
         }
 
+        if (fg_only_mode == 1) {
+                command->is_bg = false;
+        }                
+
         // Non built-in commands go here!
         pid_t spawnpid = fork();
         int child_status;
@@ -213,6 +219,21 @@ void execute_input(struct command_line *command)
                         close(fd_out);
                 }
 
+                if (command->is_bg) {
+
+                        int fd_out = open("/dev/null", O_WRONLY);
+
+                        if (fd_out == -1) {
+                                exit(EXIT_FAILURE);
+                        }
+
+                        if (dup2(fd_out, 1) == -1) {
+                                exit(EXIT_FAILURE);
+                        }
+
+                        close(fd_out);
+                }
+
                 if (execvp(command->argv[0], command->argv) == -1) {
                         fprintf(stderr, "%s: no such file or directory\n", command->argv[0]);
                         exit(EXIT_FAILURE);
@@ -231,6 +252,8 @@ void execute_input(struct command_line *command)
 
                 } else {
 
+                        child_running = 1;
+
                         waitpid(spawnpid, &child_status, 0);
 
                         if (WIFEXITED(child_status)) {
@@ -244,6 +267,22 @@ void execute_input(struct command_line *command)
                                 last_fg_terminated_by_signal = true;
                                 printf("terminated by signal %d\n", last_fg_signal);
                                 fflush(stdout);
+                        }
+
+                        if (tstp_pending) {
+
+                                if (fg_only_mode == 1) {
+
+                                        char *msg = "\nEntering foreground-only mode (& is now ignored)\n"; // 50 bytes
+                                        write(STDOUT_FILENO, msg, 50);
+                                        
+                                } else {
+
+                                        char *msg = "\nExiting foreground-only mode\n"; // 30 bytes
+                                        write(STDOUT_FILENO, msg, 30);
+                                }
+
+                                tstp_pending = 0;
                         }
                 }
         }
@@ -295,18 +334,26 @@ void check_bg_processes(void)
  */
 void handle_SIGTSTP(int signal_number) {
 
-        if (fg_only_mode == 0) {
+        if (child_running) {
 
-                fg_only_mode = 1;
-
-                char *msg = "\nEntering foreground-only mode (& is now ignored)\n"; // 50 bytes
-                write(STDOUT_FILENO, msg, 50);
+                fg_only_mode = (fg_only_mode == 0) ? 1 : 0;
+                tstp_pending = 1;
 
         } else {
 
-                fg_only_mode = 0;
+                if (fg_only_mode == 0) {
 
-                char *msg = "\nExiting foreground-only mode\n"; // 30 bytes
-                write(STDOUT_FILENO, msg, 30);
+                        fg_only_mode = 1;
+
+                        char *msg = "\nEntering foreground-only mode (& is now ignored)\n"; // 50 bytes
+                        write(STDOUT_FILENO, msg, 50);
+
+                } else {
+
+                        fg_only_mode = 0;
+
+                        char *msg = "\nExiting foreground-only mode\n"; // 30 bytes
+                        write(STDOUT_FILENO, msg, 30);
+                }
         }
 }
