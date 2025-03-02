@@ -5,7 +5,7 @@
  * "incomplete type "struct sigaction" is not allowed"
  * "identifier "SA_RESTART" is undefined"
  */
-#define _XOPEN_SOURCE 700
+// #define _XOPEN_SOURCE 700
 
 // include directives
 #include <stdio.h>
